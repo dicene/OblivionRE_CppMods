@@ -5,7 +5,7 @@
 #include "Unreal/AActor.hpp"
 #include "Unreal/UClass.hpp"
 #include "Unreal/UFunction.hpp"
-//#include <SigScanner/SinglePassSigScanner.hpp>
+#include <SigScanner/SinglePassSigScanner.hpp>
 
 using namespace RC;
 using namespace RC::Unreal;
@@ -83,7 +83,7 @@ template <class... Args>
 void PrintToConsole(const char* fmt, Args... args)
 {
     using func_t = void(*)(const char*, ...);
-    auto func = reinterpret_cast<func_t>(0x14656A7A0);
+    auto func = reinterpret_cast<func_t>(BaseModuleAdd + 0x656A7A0);
     return func(fmt, args...);
 }
 
@@ -129,21 +129,102 @@ public:
     }
     ~ConsoleUtils() override = default;
 
-    auto on_unreal_init() -> void override {
+    auto on_unreal_init() -> void override
+    {
         BaseModule = GetModuleHandleW(NULL);
         BaseModuleAdd = (uint64_t)BaseModule;
 
-        ExecuteConsoleCommand = (ExecuteConsoleCommandFuncType*)(BaseModuleAdd + 0x6555280);
-        IsOblivionInitialized = (IsOblivionInitializedFuncType*)(BaseModuleAdd + 0x4595EE0);
+		const SignatureContainer executeConsoleCommandSig{
+			{{"48 89 5C 24 08 48 89 74 24 20 57 48 81 EC D0 00 00 00 48 8B ?? ?? ?? ?? ?? 48 33 C4 48 89 ?? ?? ?? ?? ?? ?? 49 8b d8"}},
+			[&](const SignatureContainer& self) {
+			    //ChangeAnime_Detour = new PLH::x64Detour(reinterpret_cast<uint64_t>(self.get_match_address()), reinterpret_cast<uint64_t>(&ChangeAnime_Hook), reinterpret_cast<uint64_t*>(&ChangeAnime_Orig));
+			    //ChangeAnime_Detour->hook();
+			    if (self.get_did_succeed())
+                {
+				    Output::send(STR("Found ExecuteConsoleCommand via scan at {:#08x}"), self.get_match_address());
+			    }
+                else
+                {
+                    Output::send(STR("Failed to find ExecuteConsoleCommand via scan"));
+                }
+                return true;
+            },
+            [](SignatureContainer& self) { },
+		};
+
+        const SignatureContainer vOblivionUEPairingGateIsInitializedSig{
+            {{"48 8b 74 24 50 48 8b c3 48 89 1d ?? ?? ?? ?? 48 8b 5c 24 48 48 83 c4 38"}},
+            [&](const SignatureContainer& self) {
+                //SetAnimeFrame_Detour = new PLH::x64Detour(reinterpret_cast<uint64_t>(self.get_match_address()), reinterpret_cast<uint64_t>(&SetAnimeFrame_Hook), reinterpret_cast<uint64_t*>(&SetAnimeFrame_Orig));
+                //SetAnimeFrame_Detour->hook();
+                if (self.get_did_succeed()) {
+                    Output::send(STR("Found VOblivionUEPairingGateIsInitialized via scan at {:#08x}"), self.get_match_address());
+                }
+                else
+                {
+                    Output::send(STR("Failed to find VOblivionUEPairingGateIsInitialized via scan"));
+                }
+                return true;
+            },
+            [](SignatureContainer& self) { },
+        };
+
+        const SignatureContainer consolePrintSig{
+            {{"48 89 ?? ?? ?? 48 89 ?? ?? ?? 4c 89 ?? ?? ?? 4c 89 ?? ?? ?? 48 83 ec 28 80 3d ?? ?? ?? ?? ?? 74 26"}},
+            [&](const SignatureContainer& self) {
+                //SetAnimeFrame_Detour = new PLH::x64Detour(reinterpret_cast<uint64_t>(self.get_match_address()), reinterpret_cast<uint64_t>(&SetAnimeFrame_Hook), reinterpret_cast<uint64_t*>(&SetAnimeFrame_Orig));
+                //SetAnimeFrame_Detour->hook();
+                if (self.get_did_succeed()) {
+                    Output::send(STR("Found ConsolePrint via scan at {:#08x}"), self.get_match_address());
+                }
+                else
+                {
+                    Output::send(STR("Failed to find ConsolePrint via scan"));
+                }
+                return true;
+            },
+            [](SignatureContainer& self) {},
+        };
+
+        const SignatureContainer engineTickSig{
+            {{"44 88 44 24 18 53 57 41 54 41 56 48 81 ec ?? ?? ?? ??"}},
+            [&](const SignatureContainer& self) {
+                //SetAnimeFrame_Detour = new PLH::x64Detour(reinterpret_cast<uint64_t>(self.get_match_address()), reinterpret_cast<uint64_t>(&SetAnimeFrame_Hook), reinterpret_cast<uint64_t*>(&SetAnimeFrame_Orig));
+                //SetAnimeFrame_Detour->hook();
+                if (self.get_did_succeed()) {
+                    Output::send(STR("Found EngineTick via scan at {:#08x}"), self.get_match_address());
+                }
+                else
+                {
+                    Output::send(STR("Failed to find EngineTick via scan"));
+                }
+                return true;
+            },
+            [](SignatureContainer& self) {},
+        };
+
+        std::vector<SignatureContainer> signature_containers;
+        signature_containers.push_back(executeConsoleCommandSig);
+        signature_containers.push_back(vOblivionUEPairingGateIsInitializedSig);
+        signature_containers.push_back(consolePrintSig);
+        signature_containers.push_back(engineTickSig);
+
+        SinglePassScanner::SignatureContainerMap signature_containers_map;
+        signature_containers_map.emplace(ScanTarget::MainExe, signature_containers);
+
+        SinglePassScanner::start_scan(signature_containers_map);
+
+        ExecuteConsoleCommand = (ExecuteConsoleCommandFuncType*)(BaseModuleAdd + 0x6555280); // 48 89 5C 24 08 48 89 74 24 20 57 48 81 EC D0 00 00 00 48 8B ?? ?? ?? ?? ?? 48 33 C4 48 89 ?? ?? ?? ?? ?? ?? 49 8b d8
+        IsOblivionInitialized = (IsOblivionInitializedFuncType*)(BaseModuleAdd + 0x4595EE0); // Var this func points to, (aob+0xb) + (aob + 0xf) -> 48 8b 74 24 50 48 8b c3 48 89 1d ?? ?? ?? ?? 48 8b 5c 24 48 48 83 c4 38
 
         ConsolePrint_Detour = new PLH::x64Detour(
-            BaseModuleAdd + 0x656A7A0,
+            BaseModuleAdd + 0x656A7A0, // 48 89 ?? ?? ?? 48 89 ?? ?? ?? 4c 89 ?? ?? ?? 4c 89 ?? ?? ?? 48 83 ec 28 80 3d ?? ?? ?? ?? ?? 74 26
             reinterpret_cast<uint64_t>(&ConsolePrint_Replacement),
             reinterpret_cast<uint64_t*>(&ConsolePrint_Original));
         ConsolePrint_Detour->hook();
 
         EngineTick_Detour = new PLH::x64Detour(
-            BaseModuleAdd + 0x31C4D60,
+            BaseModuleAdd + 0x31C4D60, // 44 88 44 24 18 53 57 41 54 41 56 48 81 ec ?? ?? ?? ??
             reinterpret_cast<uint64_t>(&EngineTick_Replacement),
             reinterpret_cast<uint64_t*>(&EngineTick_Original));
         EngineTick_Detour->hook();
