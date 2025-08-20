@@ -23,6 +23,8 @@ Examples of how you should and shouldn't call it are provided in the `ConsoleUti
 Potential future features:
  - Maybe modify it to work in `ExecuteWithDelay` or `ExecuteAsync` calls by blocking the calling lua function until the next engine tick and completing it from within that tick.
  - Add a custom event handler so BP mods can make use of console commands for the countless things that they provide access to that you can't normally do from in a BP mod.
+ - I might eventually expand the example functions in the Lua script to handle reading the returns from various common functions so users don't have to handle that part themselves.
+ - If it would be useful, I might add a way to set a custom Lua callback that can fire on any text printed to the console, which could potentially make the existing Notification triggering functionality in some mods using ObScripts easier, since you wouldn't have to trap and remove notifications manually.
 
 Changelog:
  - 1.1 - https://github.com/dicene/OblivionRE_CppMods/releases/tag/1.1
