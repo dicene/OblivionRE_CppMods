@@ -1,4 +1,3 @@
-# MyMods
 ## ConsoleUtils v1.1 - https://github.com/dicene/OblivionRE_CppMods/releases/tag/1.1
 ### Adds Lua Function `ExecuteConsoleCommand(command)`
 This new function returns the results of a Console Command as a string. This SHOULD work correctly with OBSE64 since the new functionality in OBSE64 is built into the same list of console commands that the `ExecuteConsoleCommand` method is using, but I haven't personally tested it thoroughly.
